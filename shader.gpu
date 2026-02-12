@@ -1,0 +1,112 @@
+// Vertex shader 
+const vertexShaderSource = `
+attribute vec3 vertex;
+attribute vec3 normal;
+attribute vec2 uv;
+attribute vec3 tangent;
+attribute vec3 bitangent;
+
+uniform mat4 ModelMatrix;
+uniform mat4 ViewMatrix;
+uniform mat4 ProjectionMatrix;
+uniform mat3 NormalMatrix; 
+
+uniform vec3 uLightPosition;
+uniform vec3 uViewPosition;
+
+varying vec2 vUV;
+varying vec3 vLightDir_TangentSpace;
+varying vec3 vViewDir_TangentSpace;
+
+void main() {
+    vec4 worldPos = ModelMatrix * vec4(vertex, 1.0);
+    gl_Position = ProjectionMatrix * ViewMatrix * worldPos;
+    
+    vUV = uv;
+
+    // Розрахунок TBN матриці для Normal Mapping
+    vec3 T = normalize(vec3(ModelMatrix * vec4(tangent, 0.0)));
+    vec3 B = normalize(vec3(ModelMatrix * vec4(bitangent, 0.0)));
+    vec3 N = normalize(NormalMatrix * normal);
+    
+    mat3 TBN = mat3(T.x, B.x, N.x, 
+                    T.y, B.y, N.y,  
+                    T.z, B.z, N.z); 
+
+    // Вектори світла та погляду в тангенціальному просторі
+    vLightDir_TangentSpace = TBN * (uLightPosition - worldPos.xyz);
+    vViewDir_TangentSpace = TBN * (uViewPosition - worldPos.xyz);
+}`;
+
+// Fragment shader 
+const fragmentShaderSource = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+#else
+    precision mediump float;
+#endif
+
+varying vec2 vUV;
+varying vec3 vLightDir_TangentSpace;
+varying vec3 vViewDir_TangentSpace;
+
+uniform sampler2D uDiffuseMap;
+uniform sampler2D uSpecularMap;
+uniform sampler2D uNormalMap;
+
+uniform vec3 uAmbientColor;
+uniform vec3 uDiffuseColor;
+uniform vec3 uSpecularColor;
+uniform float uShininess;
+
+uniform bool uIsLight;  // Використовуємо для Wireframe (білий колір)
+uniform bool uEnableLighting; // Використовуємо для фону камери (AR)
+
+uniform vec4 uColor; 
+
+uniform bool uUseDiffuseMap;
+uniform bool uUseSpecularMap;
+uniform bool uUseNormalMap;
+
+void main() {
+    // Якщо малюємо Wireframe або маркер - повертаємо заданий колір
+    if (uIsLight) {
+        gl_FragColor = uColor; 
+        return;
+    }
+
+    // Отримання базового кольору (Diffuse)
+    vec4 texDiffuse = uUseDiffuseMap ? texture2D(uDiffuseMap, vUV) : vec4(uDiffuseColor, 1.0);
+
+    // Якщо освітлення вимкнено (наприклад, для фону з камери)
+    if (!uEnableLighting) {
+        gl_FragColor = texDiffuse;
+        return;
+    }
+
+    // Карта нормалей
+    vec3 N = vec3(0.0, 0.0, 1.0);
+    if (uUseNormalMap) {
+        N = normalize(texture2D(uNormalMap, vUV).rgb * 2.0 - 1.0);
+    }
+
+    // Карта відблисків
+    vec3 texSpecular = uUseSpecularMap ? texture2D(uSpecularMap, vUV).rgb : vec3(1.0);
+    
+    // Модель освітлення Фонга
+    vec3 L = normalize(vLightDir_TangentSpace);
+    vec3 V = normalize(vViewDir_TangentSpace);
+    vec3 R = reflect(-L, N);
+    
+    vec3 ambient = uAmbientColor * texDiffuse.rgb;
+    float diff = max(dot(N, L), 0.0);
+    vec3 diffuse = uDiffuseColor * diff * texDiffuse.rgb;
+
+    float spec = 0.0;
+    if (diff > 0.0) {
+        spec = pow(max(dot(V, R), 0.0), uShininess);
+    }
+    vec3 specular = uSpecularColor * spec * texSpecular;
+
+    gl_FragColor = vec4(ambient + diffuse + specular, texDiffuse.a);
+}`;

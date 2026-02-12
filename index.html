@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Virich Cyclic Surface — Stereo & AR</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #ccc;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 320px;
+            background-color: #252526;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+            overflow-y: auto;
+            font-size: 13px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            color: #fff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 11px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #2d2d2d;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        input[type="number"] {
+            background-color: #3c3c3c;
+            border: 1px solid #555;
+            color: #eee;
+            border-radius: 3px;
+            padding: 2px 5px;
+            width: 50px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            margin-left: 10px;
+        }
+
+        button {
+            padding: 8px;
+            background-color: #ff8800;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #e67a00;
+        }
+
+        details summary {
+            cursor: pointer;
+            color: #ff8800;
+            font-weight: bold;
+            outline: none;
+            margin-bottom: 5px;
+        }
+
+        #canvas-container {
+            flex: 1;
+            background-color: #000;
+            position: relative;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .info-val {
+            color: #ff8800;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body onload="init()">
+
+<video id="webcam" autoplay playsinline muted style="display:none;"></video>
+
+<div id="sidebar">
+    
+    <div class="control-group">
+        <div class="section-title">Stereo Settings (Anaglyph)</div>
+        <label title="Відстань між очима">
+            Eye Separation: <span id="valEyeSep" class="info-val">0.2</span>
+            <input id="eyeSep" type="range" min="0" max="2" step="0.01" value="0.2">
+        </label>
+        <label title="Відстань до екрана (Zero Parallax)">
+            Convergence: <span id="valConv" class="info-val">10</span>
+            <input id="convergence" type="range" min="1" max="50" step="0.5" value="10">
+        </label>
+        <label title="Кут огляду">
+            FOV: <span id="valFOV" class="info-val">45</span>
+            <input id="fov" type="range" min="10" max="120" step="1" value="45">
+        </label>
+        <label title="Ближня площина відсікання">
+            Near Plane: <span id="valNear" class="info-val">0.1</span>
+            <input id="near" type="range" min="0.01" max="5" step="0.01" value="0.1">
+        </label>
+    </div>
+
+    <div class="control-group">
+        <div class="section-title">Augmented Reality</div>
+        <label>
+            <span>Show Webcam Background</span>
+            <input type="checkbox" checked id="enableWebcam">
+        </label>
+        <button id="btnToggleCam">Start Web Camera</button>
+    </div>
+
+    <details>
+        <summary>Surface & Rendering Legacy</summary>
+        <div class="control-group">
+            <div class="section-title">Surface Geometry</div>
+            <label>a: <input id="paramA" type="number" value="1.5" step="0.1"></label>
+            <label>b: <input id="paramB" type="number" value="3" step="0.1"></label>
+            <label>c: <input id="paramC" type="number" value="2" step="0.1"></label>
+            <label>d: <input id="paramD" type="number" value="4" step="0.1"></label>
+            <label>U Steps: <input id="paramU" type="number" value="60"></label>
+            <label>V Steps: <input id="paramV" type="number" value="60"></label>
+            <button onclick="updateSurface()">Rebuild Surface</button>
+        </div>
+
+        <div class="control-group">
+            <div class="section-title">Visuals</div>
+            <label><input type="checkbox" id="enableLighting" checked onchange="updateRenderSettings()"> Enable Lighting</label>
+            <label><input type="checkbox" id="useDiffuseMap" checked onchange="updateRenderSettings()"> Diffuse Map</label>
+            <label><input type="checkbox" id="useNormalMap" checked onchange="updateRenderSettings()"> Normal Map</label>
+        </div>
+    </details>
+
+    <div class="control-group" style="margin-top: auto;">
+        <button onclick="resetView()" style="background-color: #444;">Reset View</button>
+        <p style="font-size: 10px; color: #777; margin-top: 5px;">
+            * Rotate using mouse around center of mass.<br>
+            * Requires Red-Cyan glasses for 3D effect.
+        </p>
+    </div>
+
+</div>
+
+<div id="canvas-container">
+    <canvas id="webglcanvas"></canvas>
+</div>
+
+<script src="./Utils/trackball-rotator.js"></script>
+<script src="./Utils/m4.js"></script>
+
+<script src="./src/geometry.js"></script>
+<script src="./src/stereo.js"></script>
+<script src="./src/camera.js"></script>
+
+<script src="./shader.gpu"></script>
+<script src="./src/main.js"></script>
+
+<script>
+    // Оновлення текстових значень для слайдерів UI
+    const syncSlider = (id, labelId) => {
+        const slider = document.getElementById(id);
+        const label = document.getElementById(labelId);
+        slider.oninput = () => { label.innerText = slider.value; };
+    };
+    syncSlider('eyeSep', 'valEyeSep');
+    syncSlider('convergence', 'valConv');
+    syncSlider('fov', 'valFOV');
+    syncSlider('near', 'valNear');
+</script>
+
+</body>
+</html>

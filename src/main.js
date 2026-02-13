@@ -1,24 +1,21 @@
 'use strict';
 
-let gl;                         // Контекст WebGL
-let surfaceProgram;             // Основна шейдерна програма
-let surfaceBufferData;          // Буфери моделі
-let quadBufferData;             // Буфери для фону камери
-let rotator;                    // Об'єкт TrackballRotator
-let centerOfMass = [0, 0, 0];   // Центр мас моделі
-let textures = {};              // Об'єкт для збереження текстур (виправлено: додано ініціалізацію)
+let gl;                        
+let surfaceProgram;            
+let surfaceBufferData;          
+let quadBufferData;             
+let rotator;                    
+let centerOfMass = [0, 0, 0];   
+let textures = {};              
 let startTime = Date.now();
 
-// Об'єкт для збереження стану інтерфейсу
 let renderSettings = {
     enableLighting: true,
     useDiffuse: true,
     useNormal: true
 };
 
-/**
- * Ініціалізація додатка
- */
+
 /**
  * Ініціалізація додатка
  */
@@ -29,34 +26,26 @@ async function init() {
         gl = canvas.getContext("webgl");
         if (!gl) throw new Error("WebGL не підтримується");
 
-        // Ініціалізація часу для динамічного освітлення
-        window.startTime = Date.now(); // Використовуємо глобальну змінну для доступу в draw()
+        window.startTime = Date.now(); 
 
-        // Завантаження текстур
         textures.diffuse = loadTexture(gl, './textures/Stone_Floor_002_DIFFUSE.jpg');
         textures.normal = loadTexture(gl, './textures/Stone_Floor_002_NORM.jpg');
         textures.specular = loadTexture(gl, './textures/Stone_Floor_002_SPEC.jpg');
 
-        // Створення програми шейдерів
         surfaceProgram = createProgram(gl, vertexShaderSource, fragmentShaderSource);
         
-        // Ініціалізація TrackballRotator
         rotator = new TrackballRotator(canvas, null, 15);
 
-        // Ініціалізація буферів для фону камери (з camera.js)
         quadBufferData = createBackgroundBuffers(gl);
 
-        // Початкова побудова поверхні
         updateSurface();
 
-        // Налаштування кнопки камери
         document.getElementById("btnToggleCam").onclick = () => {
             initWebcam(gl);
         };
 
-        // --- ДОДАНО: Керування FOV коліщатком миші ---
         canvas.addEventListener("wheel", (event) => {
-            event.preventDefault(); // Запобігаємо прокрутці сторінки
+            event.preventDefault(); 
 
             const fovInput = document.getElementById("fov");
             const fovLabel = document.getElementById("valFOV");
@@ -64,12 +53,11 @@ async function init() {
             if (fovInput) {
                 let currentFov = parseFloat(fovInput.value);
                 
-                // Зміна FOV (deltaY < 0 - вперед/зум, deltaY > 0 - назад)
                 const step = 2;
                 if (event.deltaY < 0) {
-                    currentFov = Math.max(currentFov - step, 10);  // Мінімум 10 градусів
+                    currentFov = Math.max(currentFov - step, 10);  
                 } else {
-                    currentFov = Math.min(currentFov + step, 120); // Максимум 120 градусів
+                    currentFov = Math.min(currentFov + step, 120); 
                 }
 
                 fovInput.value = currentFov;
@@ -77,7 +65,6 @@ async function init() {
             }
         }, { passive: false });
 
-        // Запуск циклу рендерингу
         requestAnimationFrame(draw);
     } catch (e) {
         console.error("Помилка ініціалізації: ", e);
@@ -142,8 +129,8 @@ function draw() {
     }
 
     const eyes = [
-        { id: -1, mask: [true, false, false, true] }, // Red
-        { id: 1, mask: [false, true, true, true] }    // Cyan
+        { id: -1, mask: [true, false, false, true] }, 
+        { id: 1, mask: [false, true, true, true] }    
     ];
 
     eyes.forEach(eye => {
@@ -163,7 +150,7 @@ function draw() {
 }
 
 /**
- * Рендеринг моделі (Полігони + Сітка)
+ * Рендеринг моделі 
  */
 function renderObject(projection, view, model) {
     gl.useProgram(surfaceProgram);
@@ -195,22 +182,25 @@ function renderObject(projection, view, model) {
     gl.uniformMatrix3fv(gl.getUniformLocation(surfaceProgram, "NormalMatrix"), false, normalMatrix3);
 
     updateRenderSettings();
-    gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uEnableLighting"), renderSettings.enableLighting ? 1 : 0);
-        // Розрахунок часу в секундах
-    const currentTime = (Date.now() - startTime) * 0.001;
-    const radius = 15.0; // Радіус обертання світла
+    const uColorLoc = gl.getUniformLocation(surfaceProgram, "uColor");
+    const uIsLightLoc = gl.getUniformLocation(surfaceProgram, "uIsLight");
 
-    // Світло буде рухатися по колу в площині XZ
+    const currentTime = (Date.now() - startTime) * 0.001;
+    const radius = 15.0;
     const lightX = Math.cos(currentTime) * radius;
     const lightZ = Math.sin(currentTime) * radius;
-    const lightY = 10.0; // Висота світла залишається сталою
+    const lightY = 10.0;
 
     gl.uniform3fv(gl.getUniformLocation(surfaceProgram, "uLightPosition"), [lightX, lightY, lightZ]);
-    //  gl.uniform3fv(gl.getUniformLocation(surfaceProgram, "uLightPosition"), [10, 10, 10]);
     gl.uniform3fv(gl.getUniformLocation(surfaceProgram, "uAmbientColor"), [0.2, 0.2, 0.2]);
     gl.uniform3fv(gl.getUniformLocation(surfaceProgram, "uDiffuseColor"), [1.0, 1.0, 1.0]);
+    gl.uniform1f(gl.getUniformLocation(surfaceProgram, "uShininess"), 32.0);
 
-    // --- ПРИВ'ЯЗКА ТЕКСТУР ДЛЯ ПОЛІГОНІВ (виправлено: перенесено сюди) ---
+    gl.uniform1i(uIsLightLoc, 0); 
+    gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uEnableLighting"), renderSettings.enableLighting ? 1 : 0);
+    
+    gl.uniform4f(uColorLoc, 0.3, 0.3, 0.3, 1.0); 
+
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, textures.diffuse);
     gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uDiffuseMap"), 0);
@@ -222,18 +212,18 @@ function renderObject(projection, view, model) {
     gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uUseDiffuseMap"), renderSettings.useDiffuse ? 1 : 0);
     gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uUseNormalMap"), renderSettings.useNormal ? 1 : 0);
 
-    // --- Малювання заповнених полігонів (Fill) ---
-    gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uIsLight"), 0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, surfaceBufferData.fillIndices);
     gl.drawElements(gl.TRIANGLES, surfaceBufferData.fillCount, gl.UNSIGNED_SHORT, 0);
 
-    // --- Малювання каркаса (Wireframe) ---
     gl.enable(gl.POLYGON_OFFSET_FILL);
-    gl.polygonOffset(1.0, 1.0);
-    gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uIsLight"), 1); 
-    gl.uniform4f(gl.getUniformLocation(surfaceProgram, "uColor"), 1.0, 1.0, 1.0, 1.0);
+    gl.polygonOffset(1.0, 1.0); 
+
+    gl.uniform1i(uIsLightLoc, 1); 
+    gl.uniform4f(uColorLoc, 1.0, 1.0, 1.0, 1.0); 
+    
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, surfaceBufferData.lineIndices);
     gl.drawElements(gl.LINES, surfaceBufferData.lineCount, gl.UNSIGNED_SHORT, 0);
+
     gl.disable(gl.POLYGON_OFFSET_FILL);
 }
 
@@ -250,7 +240,7 @@ function drawBackground() {
     gl.uniformMatrix4fv(gl.getUniformLocation(surfaceProgram, "ModelMatrix"), false, identity);
 
     gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uEnableLighting"), 0);
-    gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uIsLight"), 0); // Виправлено: 0 для відображення текстури камери
+    gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uIsLight"), 0); 
     gl.uniform1i(gl.getUniformLocation(surfaceProgram, "uUseDiffuseMap"), 1);
 
     gl.activeTexture(gl.TEXTURE0);

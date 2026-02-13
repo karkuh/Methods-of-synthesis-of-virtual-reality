@@ -1,5 +1,3 @@
-// camera.js
-
 let webcamVideo = null;
 let webcamTexture = null;
 let isWebcamPlaying = false;
@@ -18,18 +16,15 @@ async function initWebcam(gl) {
         });
         
         webcamVideo.srcObject = stream;
-        // Обов'язково чекаємо завантаження метаданих для коректного відтворення
         webcamVideo.onloadedmetadata = () => {
             webcamVideo.play();
             isWebcamPlaying = true;
             console.log("Webcam stream started successfully.");
         };
         
-        // Створення текстури для відео
         webcamTexture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, webcamTexture);
         
-        // Налаштування параметрів текстури (важливо для відео, яке часто не є Power of 2)
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -48,7 +43,6 @@ async function initWebcam(gl) {
 function updateWebcamTexture(gl) {
     if (isWebcamPlaying && webcamTexture) {
         gl.bindTexture(gl.TEXTURE_2D, webcamTexture);
-        // Копіюємо поточний кадр відео в текстуру GPU
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, webcamVideo);
     }
 }
@@ -60,12 +54,10 @@ function updateWebcamTexture(gl) {
 function createBackgroundBuffers(gl) {
     const data = createBackgroundQuad();
     
-    // Створюємо буфер вершин
     const vBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.vertices), gl.STATIC_DRAW);
     
-    // Створюємо буфер UV-координат
     const uBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, uBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.uvs), gl.STATIC_DRAW);

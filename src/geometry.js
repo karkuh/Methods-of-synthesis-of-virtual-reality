@@ -1,8 +1,5 @@
-// geometry.js
-
 /**
  * Обчислює центр мас параметричної поверхні на основі масиву її вершин.
- * Необхідно для виконання завдання з обертання моделі навколо її центру мас.
  */
 function calculateCenterOfMass(vertices) {
     let sumX = 0, sumY = 0, sumZ = 0;
@@ -35,9 +32,8 @@ function computeSurfacePoint(a, b, c, d, u, v) {
     let position = [x, y, z];
 
     function df(v) {
-        let s = Math.sin(v), c0 = Math.cos(v); // Тут визначено c0
+        let s = Math.sin(v), c0 = Math.cos(v); 
         let numerator = - (a * a - b * b) * s * c0 * (a * b);
-        // Помилка була тут: замість co має бути c0
         let denom = Math.pow(a * a * s * s + b * b * c0 * c0, 1.5); 
         return numerator / denom;
     }

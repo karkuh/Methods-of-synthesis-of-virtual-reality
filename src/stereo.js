@@ -1,5 +1,3 @@
-// stereo.js
-
 /**
  * Обчислює матриці проекції та вигляду для стереоскопічного рендерингу.
  * Використовує алгоритм Off-axis projection для коректного стереоефекту.
@@ -13,24 +11,18 @@
  * @returns {Object} Об'єкт з матрицями projection та eyeTranslation.
  */
 function getStereoMatrices(eye, eyeSep, convergence, fov, aspect, near, far) {
-    // Обчислюємо розміри площини конвергенції
     const top = near * Math.tan(fov / 2);
     const bottom = -top;
     
-    // Половина ширини площини конвергенції
     const a = aspect * Math.tan(fov / 2) * convergence;
     
-    // Зміщення для створення асиметричної піраміди (frustum)
     const offset = (eye * eyeSep / 2);
     
-    // Обчислюємо межі лівої та правої площин відсікання (left/right для frustum)
     const left = -(a - offset) * near / convergence;
     const right = (a + offset) * near / convergence;
     
-    // Створюємо асиметричну матрицю проекції
     const projection = m4.frustum(left, right, bottom, top, near, far);
     
-    // Створюємо матрицю зміщення камери для конкретного ока
     const eyeTranslation = m4.translation(-offset, 0, 0);
     
     return {

@@ -24,7 +24,6 @@ void main() {
     
     vUV = uv;
 
-    // Розрахунок TBN матриці для Normal Mapping
     vec3 T = normalize(vec3(ModelMatrix * vec4(tangent, 0.0)));
     vec3 B = normalize(vec3(ModelMatrix * vec4(bitangent, 0.0)));
     vec3 N = normalize(NormalMatrix * normal);
@@ -33,7 +32,6 @@ void main() {
                     T.y, B.y, N.y,  
                     T.z, B.z, N.z); 
 
-    // Вектори світла та погляду в тангенціальному просторі
     vLightDir_TangentSpace = TBN * (uLightPosition - worldPos.xyz);
     vViewDir_TangentSpace = TBN * (uViewPosition - worldPos.xyz);
 }`;
@@ -59,8 +57,8 @@ uniform vec3 uDiffuseColor;
 uniform vec3 uSpecularColor;
 uniform float uShininess;
 
-uniform bool uIsLight;  // Використовуємо для Wireframe (білий колір)
-uniform bool uEnableLighting; // Використовуємо для фону камери (AR)
+uniform bool uIsLight;  
+uniform bool uEnableLighting; 
 
 uniform vec4 uColor; 
 
@@ -69,34 +67,28 @@ uniform bool uUseSpecularMap;
 uniform bool uUseNormalMap;
 
 void main() {
-    // Якщо малюємо Wireframe або маркер - повертаємо заданий колір
     if (uIsLight) {
         gl_FragColor = uColor; 
         return;
     }
 
-    // Отримання базового кольору (Diffuse)
-    vec4 texDiffuse = uUseDiffuseMap ? texture2D(uDiffuseMap, vUV) : vec4(uDiffuseColor, 1.0);
+    vec4 texDiffuse = uUseDiffuseMap ? texture2D(uDiffuseMap, vUV) : uColor;
 
-    // Якщо освітлення вимкнено (наприклад, для фону з камери)
     if (!uEnableLighting) {
         gl_FragColor = texDiffuse;
         return;
     }
 
-    // Карта нормалей
     vec3 N = vec3(0.0, 0.0, 1.0);
     if (uUseNormalMap) {
         N = normalize(texture2D(uNormalMap, vUV).rgb * 2.0 - 1.0);
     }
 
-    // Карта відблисків
-    vec3 texSpecular = uUseSpecularMap ? texture2D(uSpecularMap, vUV).rgb : vec3(1.0);
-    
-    // Модель освітлення Фонга
     vec3 L = normalize(vLightDir_TangentSpace);
     vec3 V = normalize(vViewDir_TangentSpace);
     vec3 R = reflect(-L, N);
+    
+    vec3 texSpecular = uUseSpecularMap ? texture2D(uSpecularMap, vUV).rgb : vec3(1.0);
     
     vec3 ambient = uAmbientColor * texDiffuse.rgb;
     float diff = max(dot(N, L), 0.0);

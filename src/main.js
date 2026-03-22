@@ -8,6 +8,7 @@ let rotator;
 let centerOfMass = [0, 0, 0];   
 let textures = {};              
 let startTime = Date.now();
+let phoneRotationMatrix = m4.identity(); // Глобальна матриця обертання
 
 let renderSettings = {
     enableLighting: true,
@@ -104,6 +105,9 @@ function updateSurface() {
 /**
  * Головний цикл малювання
  */
+/**
+ * Головний цикл малювання з підтримкою вибору режиму керування
+ */
 function draw() {
     const canvas = gl.canvas;
     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
@@ -128,6 +132,19 @@ function draw() {
         drawBackground();
     }
 
+    // ВИБІР РЕЖИМУ КЕРУВАННЯ
+    const usePhone = document.getElementById("usePhoneTUI") && document.getElementById("usePhoneTUI").checked;
+    let baseViewMatrix;
+
+    if (usePhone) {
+        // Режим TUI (iPhone): копіюємо матрицю повороту та додаємо дистанцію перегляду
+        baseViewMatrix = m4.copy(phoneRotationMatrix);
+        baseViewMatrix[14] -= 15; // Відсуваємо камеру на 15 одиниць, щоб бачити фігуру
+    } else {
+        // Режим PA1: використовуємо стандартний трекбол-ротатор (мишка)
+        baseViewMatrix = rotator.getViewMatrix();
+    }
+
     const eyes = [
         { id: -1, mask: [true, false, false, true] }, 
         { id: 1, mask: [false, true, true, true] }    
@@ -138,8 +155,11 @@ function draw() {
         gl.colorMask(...eye.mask);
 
         const stereo = getStereoMatrices(eye.id, eyeSep, convergence, fov, aspect, near, far);
-        const baseViewMatrix = rotator.getViewMatrix();
+        
+        // Модельна матриця зміщує об'єкт так, щоб обертання йшло навколо центру мас
         const modelMatrix = m4.translation(-centerOfMass[0], -centerOfMass[1], -centerOfMass[2]);
+        
+        // eyeTranslation додає зміщення для лівого/правого ока поверх основної матриці вигляду
         const eyeViewMatrix = m4.multiply(stereo.eyeTranslation, baseViewMatrix);
 
         renderObject(stereo.projection, eyeViewMatrix, modelMatrix);
@@ -331,4 +351,25 @@ function loadTexture(gl, url) {
 
 function resetView() {
     rotator = new TrackballRotator(gl.canvas, null, 15);
+}
+
+function connectToPhone() {
+    const socket = new WebSocket('ws://192.168.0.103:8080');
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log("Кути від сервера:", data);
+        const a = degToRad(data.alpha); // Кут навколо Z
+        const b = degToRad(data.beta);  // Кут навколо X
+        const g = degToRad(data.gamma); // Кут навколо Y
+
+        let m = m4.identity();
+        m = m4.zRotate(m, a);
+        m = m4.xRotate(m, b);
+        m = m4.yRotate(m, g);
+
+        phoneRotationMatrix = m;
+    };
+
+    socket.onopen = () => console.log("Підключено до сенсорів!");
+    socket.onerror = (err) => console.error("Помилка WebSocket:", err);
 }

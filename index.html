@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8" />
+    <meta charset="utf-8">
     <title>Virich Cyclic Surface — Stereo & AR</title>
     <style>
         body {
@@ -140,6 +140,15 @@
             <input type="checkbox" checked id="enableWebcam">
         </label>
         <button id="btnToggleCam">Start Web Camera</button>
+    </div>
+
+    <div class="control-group">
+    <div class="section-title">Control Mode</div>
+    <label>
+        <span>Use Phone Sensor</span>
+        <input type="checkbox" id="usePhoneTUI">
+    </label>
+    <button onclick="connectToPhone()" id="btnConnectPhone">Connect to Phone</button>
     </div>
 
     <details>

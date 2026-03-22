@@ -3,3 +3,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+node_modules/
+.env
+dist/
+ngrok.exe

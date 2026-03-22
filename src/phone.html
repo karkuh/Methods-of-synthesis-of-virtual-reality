@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TUI Controller</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #121212; color: white; }
+        button { padding: 20px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <button id="start">Активувати сенсори</button>
+    <div id="status">Статус: Очікування...</div>
+
+    <script>
+        const status = document.getElementById('status');
+        const startBtn = document.getElementById('start');
+
+        
+        const ws = new WebSocket("wss://repentantly-palmitic-lucretia.ngrok-free.dev");
+        startBtn.onclick = async () => {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                const permission = await DeviceOrientationEvent.requestPermission();
+                if (permission !== 'granted') return alert('Потрібен дозвіл!');
+            }
+
+            startBtn.style.display = 'none';
+            status.innerText = 'Трансляція активована';
+
+            window.addEventListener('deviceorientation', (e) => {
+                const data = {
+                    alpha: e.alpha || 0, // Z
+                    beta: e.beta || 0,   // X
+                    gamma: e.gamma || 0  // Y
+                };
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(data));
+                }
+            });
+        };
+    </script>
+</body>
+</html>

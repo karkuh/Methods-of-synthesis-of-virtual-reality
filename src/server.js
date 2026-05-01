@@ -16,6 +16,13 @@ app.get('/phone', (req, res) => {
     res.sendFile(path.join(__dirname, 'phone.html'));
 });
 
+app.get('/ar', (req, res) => {
+    res.sendFile(path.join(__dirname, 'ar.html'));
+});
+
+app.use(express.static(path.join(__dirname)));
+app.use('/Utils', express.static(path.join(__dirname, '../Utils')));
+
 let lastData = { alpha: 0, beta: 0, gamma: 0 };
 let isPhoneConnected = false;
 
